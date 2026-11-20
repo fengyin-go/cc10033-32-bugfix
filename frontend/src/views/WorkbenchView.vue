@@ -60,6 +60,14 @@
             >
               {{ action }}
             </button>
+            <button
+              class="link"
+              type="button"
+              :data-testid="`detail-${row.id}`"
+              @click="openDetail(row)"
+            >
+              详情
+            </button>
           </td>
         </tr>
         <tr v-if="!rows.length">
@@ -84,6 +92,21 @@
           </button>
         </div>
       </form>
+    </div>
+
+    <div v-if="detailRow" class="modal-backdrop" data-testid="detail-modal">
+      <div class="modal">
+        <h3>{{ meta.entity }}详情 #{{ detailRow.id }}</h3>
+        <dl class="detail-list">
+          <template v-for="item in detailItems" :key="item.label">
+            <dt>{{ item.label }}</dt>
+            <dd :data-testid="`detail-field-${item.label}`">{{ item.value }}</dd>
+          </template>
+        </dl>
+        <div class="page-actions">
+          <button class="btn" data-testid="close-detail" type="button" @click="detailRow = null">关闭</button>
+        </div>
+      </div>
     </div>
 
     <footer class="page-foot">
@@ -115,6 +138,21 @@ const filterFields = meta.fields.slice(0, 3)
 const showCreate = ref(false)
 const creating = ref(false)
 const createValues = ref<Record<string, string>>({})
+const detailRow = ref<EntryRow | null>(null)
+const detailItems = computed(() => {
+  if (!detailRow.value) return [] as { label: string; value: string }[]
+  return Object.entries(detailRow.value)
+    .filter(([key]) => !key.startsWith('_'))
+    .map(([key, value]) => ({
+      label: key,
+      value:
+        value === null || value === undefined || value === ''
+          ? '—'
+          : typeof value === 'object'
+            ? JSON.stringify(value, null, 0)
+            : String(value),
+    }))
+})
 const stats = computed(() => [
   { label: meta.metrics[0], value: total.value },
   { label: meta.metrics[1], value: rows.value.filter((row) => row.status === meta.statuses[1]).length },
@@ -148,6 +186,10 @@ function openCreate() {
   createValues.value = Object.fromEntries(meta.fields.map((field) => [field, '']))
   errorMessage.value = ''
   showCreate.value = true
+}
+
+function openDetail(row: EntryRow) {
+  detailRow.value = row
 }
 
 async function submitCreate() {
